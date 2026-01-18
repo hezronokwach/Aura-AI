@@ -24,7 +24,7 @@ export const useFirebaseSync = () => {
                 await addDoc(collection(db, "sessions"), {
                     stressScore,
                     voiceState,
-                    taskCount: tasks.length,
+                    tasks: tasks, // Syncing full task list for historical debugging
                     timestamp: serverTimestamp(),
                 });
                 lastSaveRef.current = now;

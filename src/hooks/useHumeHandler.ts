@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { HumeClient } from 'hume';
-import { useAuraStore } from '@/store/useAuraStore';
+import { useAuraStore, type Task } from '@/store/useAuraStore';
 
 import {
     convertBlobToBase64,
@@ -20,7 +20,7 @@ export interface HumeMessage {
 }
 
 export const useHume = () => {
-    const { setStressScore, setVoiceState } = useAuraStore();
+    const { setStressScore, setVoiceState, tasks } = useAuraStore();
     const [status, setStatus] = useState<HumeStatus>('IDLE');
     const [messages, setMessages] = useState<HumeMessage[]>([]);
     const [liveTranscript, setLiveTranscript] = useState<string>('');
@@ -28,6 +28,7 @@ export const useHume = () => {
     const [isSpeakerMuted, setIsSpeakerMuted] = useState(false);
     const isSpeakerMutedRef = useRef(false);
     const [error, setError] = useState<string | null>(null);
+    const [emotions, setEmotions] = useState<Record<string, number>>({});
 
     const socketRef = useRef<any>(null);
     const recorderRef = useRef<MediaRecorder | null>(null);
@@ -52,24 +53,31 @@ export const useHume = () => {
 
         // Weights for different "stressful" emotions
         const weights: Record<string, number> = {
-            'Anxiety': 1.0,
-            'Distress': 1.2,
+            'Anxiety': 1.2,
+            'Distress': 1.5,
+            'Fear': 1.0,
             'Tiredness': 0.8,
-            'Awkwardness': 0.3,
-            'Confusion': 0.5
+            'Sorrow': 0.6,
+            'Disappointment': 0.5,
+            'Confusion': 0.4,
+            // Negative weights for calming emotions
+            'Calmness': -0.8,
+            'Contentment': -0.6,
+            'Relief': -1.0
         };
 
         let calculatedScore = 0;
-        let totalWeight = 0;
 
         Object.entries(weights).forEach(([emotion, weight]) => {
             const score = prosody.scores[emotion] || 0;
             calculatedScore += score * weight;
-            totalWeight += weight;
         });
 
         // Normalize and scale to 0-100
-        const finalScore = Math.min(100, Math.round((calculatedScore / totalWeight) * 100 * 2)); // Multiplying by 2 to make it more sensitive
+        // We use a base sensitivity and clamp between 0-100
+        const baseScore = calculatedScore * 150; // Increased multiplier for better visibility
+        const finalScore = Math.max(0, Math.min(100, Math.round(baseScore)));
+
         return finalScore;
     };
 
@@ -152,7 +160,9 @@ export const useHume = () => {
                         // Calculate Stress from User Message
                         if (msg.models?.prosody) {
                             const score = calculateStress(msg.models.prosody);
+                            console.log('Calculated stress score:', score, 'from prosody:', msg.models.prosody);
                             setStressScore(score);
+                            setEmotions(msg.models.prosody.scores || {});
                         }
                     }
                 }
@@ -215,6 +225,26 @@ export const useHume = () => {
                 break;
         }
     }, [setStressScore, setVoiceState]);
+
+    // Update Hume context whenever tasks change
+    useEffect(() => {
+        if (socketRef.current && status === 'ACTIVE') {
+            const taskContext = tasks.map((t: Task) =>
+                `- [${t.id}] ${t.title} (${t.priority} priority, status: ${t.status}, due: ${t.day})`
+            ).join('\n');
+
+            const contextMessage = `\n\nCONTEXT: The user's current task list is as follows:\n${taskContext}\n\nPlease use this information to provide personalized help and refer to tasks by their titles. If you reschedule a task, use the manage_burnout tool.`;
+
+            console.group('Aura Context Sync');
+            console.log('Injecting tasks into System Prompt...');
+
+            // Using system_prompt instead of context as it is more reliably supported as a string
+            socketRef.current.sendSessionSettings({
+                system_prompt: contextMessage
+            });
+            console.groupEnd();
+        }
+    }, [tasks, status]);
 
     const handleError = useCallback((err: Event | Error) => {
         console.error('Hume socket error:', err);
@@ -332,6 +362,7 @@ export const useHume = () => {
         endSession,
         toggleMic,
         toggleSpeaker,
-        updateSessionSettings
+        updateSessionSettings,
+        emotions
     };
 };
