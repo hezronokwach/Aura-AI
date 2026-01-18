@@ -34,8 +34,8 @@ export const useAuraStore = create<AuraState>()(
                 voiceState: 'idle',
                 tasks: [
                     { id: '1', title: 'Chemistry Lab Report', priority: 'high', day: 'today', status: 'pending' },
-                    { id: '2', title: 'Social Mixer', priority: 'low', day: 'today', status: 'pending' },
-                    { id: '3', title: 'Deep Work Session', priority: 'medium', day: 'today', status: 'pending' },
+                    { id: '2', title: 'Calculus Assignment', priority: 'medium', day: 'today', status: 'pending' },
+                    { id: '3', title: 'English Literature Essay', priority: 'low', day: 'today', status: 'pending' },
                 ],
                 sessionHistory: [],
 
