@@ -19,7 +19,8 @@ interface AuraState {
     setStressScore: (score: number) => void;
     setVoiceState: (state: AuraState['voiceState']) => void;
     postponeTask: (id: string) => void;
-    manageBurnout: (taskId?: string, adjustmentType?: 'postpone' | 'cancel' | 'delegate') => { success: boolean; message: string };
+    completeTask: (id: string) => void;
+    manageBurnout: (taskId?: string, adjustmentType?: 'postpone' | 'cancel' | 'delegate' | 'complete') => { success: boolean; message: string };
     addTask: (task: Task) => void;
     addSessionData: (data: { time: string; score: number }) => void;
     resetSession: () => void;
@@ -46,10 +47,19 @@ export const useAuraStore = create<AuraState>()(
                 setVoiceState: (voiceState) => set({ voiceState }),
 
                 postponeTask: (id) => set((state) => {
-                    console.log(`[STORE] Postponing task: ${id}`);
+                    console.warn(`[STORE] Postponing Task: ${id}`);
                     return {
                         tasks: state.tasks.map((t) =>
-                            t.id === id ? { ...t, day: 'tomorrow', status: 'postponed' } : t
+                            String(t.id) === String(id) ? { ...t, day: 'tomorrow' as const, status: 'postponed' as const } : t
+                        ),
+                    };
+                }),
+
+                completeTask: (id) => set((state) => {
+                    console.warn(`[STORE] Completing Task: ${id}`);
+                    return {
+                        tasks: state.tasks.map((t) =>
+                            String(t.id) === String(id) ? { ...t, status: 'completed' as const } : t
                         ),
                     };
                 }),
@@ -79,10 +89,13 @@ export const useAuraStore = create<AuraState>()(
                         } else if (adjustmentType === 'delegate') {
                             updatedTasks[taskIndex] = { ...task, status: 'delegated' };
                             message = `Marked "${task.title}" for delegation.`;
+                        } else if (adjustmentType === 'complete') {
+                            updatedTasks[taskIndex] = { ...task, status: 'completed' };
+                            message = `Awesome! I've marked "${task.title}" as completed.`;
                         }
 
                         success = true;
-                        console.log(`[STORE] manageBurnout applied: ${message}`, updatedTasks);
+                        console.warn(`[STORE] manageBurnout Applied: ${message}`);
                         return { tasks: updatedTasks };
                     });
 
