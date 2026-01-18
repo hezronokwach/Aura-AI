@@ -22,7 +22,7 @@ export const TaskGrid = () => {
 
     return (
         <LayoutGroup>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 w-full max-w-5xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-5xl">
                 {/* Today Section */}
                 <section className="flex flex-col">
                     <div className="flex items-center justify-between mb-6">
@@ -112,7 +112,7 @@ const TaskCard = ({ task }: { task: Task }) => {
                 ease: [0.23, 1, 0.32, 1], // Custom cubic-bezier for snappy feel
                 layout: { duration: 0.6, ease: [0.23, 1, 0.32, 1] }
             }}
-            className={`group relative p-5 rounded-[2rem] glass flex justify-between items-center border border-white/10 hover:border-white/20 transition-colors shadow-sm cursor-default ${task.status === 'cancelled' ? 'opacity-40 grayscale' : ''
+            className={`group relative p-3.5 rounded-[1.25rem] glass flex justify-between items-center border border-white/10 hover:border-white/20 transition-colors shadow-sm cursor-default ${task.status === 'cancelled' ? 'opacity-40 grayscale' : ''
                 }`}
         >
             <div className="flex items-center gap-4">
@@ -125,7 +125,7 @@ const TaskCard = ({ task }: { task: Task }) => {
                     <Circle className="w-5 h-5" />
                 </button>
                 <div>
-                    <h3 className={`font-semibold text-lg tracking-tight group-hover:text-calm transition-colors leading-tight ${task.status === 'cancelled' ? 'line-through' : ''
+                    <h3 className={`font-semibold text-base tracking-tight group-hover:text-calm transition-colors leading-tight ${task.status === 'cancelled' ? 'line-through' : ''
                         }`}>
                         {task.title}
                     </h3>
@@ -153,7 +153,7 @@ const EmptyState = ({ message }: { message: string }) => (
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="py-12 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-[3rem] text-center"
+        className="py-8 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-[2rem] text-center"
     >
         <p className="text-sm font-medium opacity-20 italic px-8">{message}</p>
     </motion.div>
