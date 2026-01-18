@@ -182,27 +182,26 @@ export const useHume = () => {
                 break;
 
             case 'tool_call':
-                console.log('Hume triggered tool:', msg.name);
+                console.log('Hume triggered tool:', msg.name, msg.parameters);
                 if (msg.name === 'manage_burnout') {
-                    // Try to find a low priority task if no ID provided
-                    const taskToPostpone = tasks.find(t => t.day === 'today' && t.priority === 'low') || tasks.find(t => t.day === 'today');
-
-                    if (taskToPostpone) {
-                        postponeTask(taskToPostpone.id);
-
-                        // Send response back to Hume
-                        socketRef.current?.sendToolResponse({
-                            type: 'tool_response',
-                            tool_call_id: msg.tool_call_id,
-                            content: `Successfully postponed task: ${taskToPostpone.title}. The user's schedule is now lighter.`
-                        });
-                    } else {
-                        socketRef.current?.sendToolResponse({
-                            type: 'tool_response',
-                            tool_call_id: msg.tool_call_id,
-                            content: "No tasks found that could be postponed at this time."
-                        });
+                    // Parameters are passed as a JSON string or object
+                    let params: any = {};
+                    try {
+                        params = typeof msg.parameters === 'string'
+                            ? JSON.parse(msg.parameters)
+                            : msg.parameters;
+                    } catch (e) {
+                        console.error('Failed to parse tool parameters', e);
                     }
+
+                    const { task_id, adjustment_type } = params;
+                    const result = useAuraStore.getState().manageBurnout(task_id, adjustment_type);
+
+                    socketRef.current?.sendToolResponse({
+                        type: 'tool_response',
+                        tool_call_id: msg.tool_call_id,
+                        content: result.message
+                    });
                 }
                 break;
 
