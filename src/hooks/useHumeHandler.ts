@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Hume, HumeClient } from 'hume';
+import { HumeClient } from 'hume';
 import { useAuraStore } from '@/store/useAuraStore';
 
 import {
@@ -20,7 +20,7 @@ export interface HumeMessage {
 }
 
 export const useHume = () => {
-    const { setStressScore, setVoiceState, postponeTask, tasks } = useAuraStore();
+    const { setStressScore, setVoiceState } = useAuraStore();
     const [status, setStatus] = useState<HumeStatus>('IDLE');
     const [messages, setMessages] = useState<HumeMessage[]>([]);
     const [liveTranscript, setLiveTranscript] = useState<string>('');
@@ -214,7 +214,7 @@ export const useHume = () => {
                 // console.log('Unhandled message type:', msg.type);
                 break;
         }
-    }, [setStressScore, setVoiceState, tasks, postponeTask]);
+    }, [setStressScore, setVoiceState]);
 
     const handleError = useCallback((err: Event | Error) => {
         console.error('Hume socket error:', err);
