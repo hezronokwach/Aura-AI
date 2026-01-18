@@ -45,21 +45,25 @@ export const useAuraStore = create<AuraState>()(
 
                 setVoiceState: (voiceState) => set({ voiceState }),
 
-                postponeTask: (id) => set((state) => ({
-                    tasks: state.tasks.map((t) =>
-                        t.id === id ? { ...t, day: 'tomorrow', status: 'postponed' } : t
-                    ),
-                })),
+                postponeTask: (id) => set((state) => {
+                    console.log(`[STORE] Postponing task: ${id}`);
+                    return {
+                        tasks: state.tasks.map((t) =>
+                            t.id === id ? { ...t, day: 'tomorrow', status: 'postponed' } : t
+                        ),
+                    };
+                }),
 
                 manageBurnout: (taskId, adjustmentType = 'postpone') => {
                     let message = "";
                     let success = false;
 
                     set((state) => {
-                        const taskIndex = state.tasks.findIndex(t => t.id === taskId);
+                        // Resilient ID check (handles string vs number)
+                        const taskIndex = state.tasks.findIndex(t => String(t.id) === String(taskId));
 
                         if (taskIndex === -1) {
-                            message = `Task with ID ${taskId} not found.`;
+                            message = `Task with ID ${taskId} not found. Available IDs: ${state.tasks.map(t => t.id).join(', ')}`;
                             return state;
                         }
 
@@ -78,6 +82,7 @@ export const useAuraStore = create<AuraState>()(
                         }
 
                         success = true;
+                        console.log(`[STORE] manageBurnout applied: ${message}`, updatedTasks);
                         return { tasks: updatedTasks };
                     });
 
