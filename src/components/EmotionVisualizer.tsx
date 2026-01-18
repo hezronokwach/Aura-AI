@@ -16,7 +16,7 @@ export const EmotionVisualizer = ({ emotions }: EmotionVisualizerProps) => {
     if (topEmotions.length === 0) return null;
 
     return (
-        <div className="flex flex-col gap-3 p-5 glass rounded-[2.5rem] border border-white/10 w-72 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] backdrop-blur-3xl ring-1 ring-white/10">
+        <div className="flex flex-col gap-3 p-6 glass rounded-[3rem] border border-white/10 w-full shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] backdrop-blur-3xl ring-1 ring-white/10">
             <div className="flex justify-between items-center mb-1 px-1">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Emotional Resonance</span>
                 <div className="flex gap-1.5">
