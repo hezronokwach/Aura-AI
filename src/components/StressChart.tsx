@@ -16,9 +16,18 @@ import { motion } from 'framer-motion';
 
 export const StressChart = () => {
     const sessionHistory = useAuraStore((state) => state.sessionHistory);
+    const [isMounted, setIsMounted] = (typeof window !== 'undefined')
+        ? require('react').useState(false)
+        : [false, () => { }];
 
-    // If no history, show a placeholder message
-    if (sessionHistory.length === 0) {
+    if (typeof window !== 'undefined') {
+        require('react').useEffect(() => {
+            setIsMounted(true);
+        }, []);
+    }
+
+    // If not mounted or no history, show placeholder
+    if (!isMounted || sessionHistory.length === 0) {
         return (
             <div className="h-64 flex items-center justify-center glass rounded-[2rem] border border-white/5">
                 <p className="text-sm opacity-30 italic">No session data available yet. Start talking to see your stress trends.</p>
@@ -49,7 +58,7 @@ export const StressChart = () => {
                 </div>
             </div>
 
-            <div className="h-56 w-full pr-4">
+            <div className="h-56 w-full pr-4 relative">
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={sessionHistory}>
                         <defs>
