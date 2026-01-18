@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Hume, HumeClient } from 'hume';
-import { useAuraStore } from '@/store/useAuraStore';
+import { HumeClient } from 'hume';
+import { useAuraStore, type Task } from '@/store/useAuraStore';
 
 import {
     convertBlobToBase64,
@@ -20,7 +20,7 @@ export interface HumeMessage {
 }
 
 export const useHume = () => {
-    const { setStressScore, setVoiceState, postponeTask, tasks } = useAuraStore();
+    const { setStressScore, setVoiceState, tasks } = useAuraStore();
     const [status, setStatus] = useState<HumeStatus>('IDLE');
     const [messages, setMessages] = useState<HumeMessage[]>([]);
     const [liveTranscript, setLiveTranscript] = useState<string>('');
@@ -28,6 +28,7 @@ export const useHume = () => {
     const [isSpeakerMuted, setIsSpeakerMuted] = useState(false);
     const isSpeakerMutedRef = useRef(false);
     const [error, setError] = useState<string | null>(null);
+    const [emotions, setEmotions] = useState<Record<string, number>>({});
 
     const socketRef = useRef<any>(null);
     const recorderRef = useRef<MediaRecorder | null>(null);
@@ -52,24 +53,54 @@ export const useHume = () => {
 
         // Weights for different "stressful" emotions
         const weights: Record<string, number> = {
-            'Anxiety': 1.0,
-            'Distress': 1.2,
-            'Tiredness': 0.8,
-            'Awkwardness': 0.3,
-            'Confusion': 0.5
+            'anxiety': 2.5,
+            'distress': 3.0,
+            'fear': 2.0,
+            'tiredness': 1.2,
+            'anger': 2.5,
+            'frustration': 2.8,
+            'sorrow': 1.0,
+            'disappointment': 1.2,
+            'confusion': 0.8,
+            'disgust': 0.6,
+            'pain': 1.5,
+            'calmness': -1.2,
+            'contentment': -1.0,
+            'relief': -1.8
         };
 
-        let calculatedScore = 0;
-        let totalWeight = 0;
+        let stressSum = 0;
+        let calmSum = 0;
+        console.group('Stress Calculation Analysis');
 
-        Object.entries(weights).forEach(([emotion, weight]) => {
-            const score = prosody.scores[emotion] || 0;
-            calculatedScore += score * weight;
-            totalWeight += weight;
+        Object.entries(prosody.scores).forEach(([emotion, score]: [string, any]) => {
+            const eLower = emotion.toLowerCase();
+            const weight = weights[eLower] || 0;
+            if (weight !== 0) {
+                const contribution = score * weight;
+                if (weight > 0) {
+                    stressSum += contribution;
+                } else {
+                    calmSum += contribution;
+                }
+
+                if (Math.abs(contribution) > 0.005) {
+                    console.log(`- ${emotion}: score=${score.toFixed(3)}, weight=${weight}, contrib=${contribution.toFixed(3)}`);
+                }
+            }
         });
 
+        // Intervention: If any stress is detected, damp the calming effect significantly
+        const effectiveCalm = stressSum > 0.05 ? calmSum * 0.2 : calmSum;
+        const rawScore = stressSum + effectiveCalm;
+
         // Normalize and scale to 0-100
-        const finalScore = Math.min(100, Math.round((calculatedScore / totalWeight) * 100 * 2)); // Multiplying by 2 to make it more sensitive
+        const finalScore = Math.max(0, Math.min(100, Math.round(rawScore * 300))); // Boosted sensitivity
+
+        console.log(`Stress Sum: ${stressSum.toFixed(4)}, Calm Sum: ${calmSum.toFixed(4)} (Effective: ${effectiveCalm.toFixed(4)})`);
+        console.log(`Final Scaled Stress Score: ${finalScore}`);
+        console.groupEnd();
+
         return finalScore;
     };
 
@@ -152,7 +183,9 @@ export const useHume = () => {
                         // Calculate Stress from User Message
                         if (msg.models?.prosody) {
                             const score = calculateStress(msg.models.prosody);
+                            console.log('Calculated stress score:', score, 'from prosody:', msg.models.prosody);
                             setStressScore(score);
+                            setEmotions(msg.models.prosody.scores || {});
                         }
                     }
                 }
@@ -182,26 +215,43 @@ export const useHume = () => {
                 break;
 
             case 'tool_call':
-                console.log('Hume triggered tool:', msg.name, msg.parameters);
-                if (msg.name === 'manage_burnout') {
-                    // Parameters are passed as a JSON string or object
+                const toolName = msg.name;
+                const toolCallId = msg.toolCallId || msg.tool_call_id;
+                const toolParams = msg.parameters;
+
+                console.warn('!!! HUME TOOL CALL RECEIVED !!!', toolName, toolParams);
+
+                if (toolName === 'manage_burnout' && toolCallId) {
                     let params: any = {};
                     try {
-                        params = typeof msg.parameters === 'string'
-                            ? JSON.parse(msg.parameters)
-                            : msg.parameters;
+                        params = typeof toolParams === 'string'
+                            ? JSON.parse(toolParams)
+                            : toolParams;
                     } catch (e) {
                         console.error('Failed to parse tool parameters', e);
                     }
 
-                    const { task_id, adjustment_type } = params;
-                    const result = useAuraStore.getState().manageBurnout(task_id, adjustment_type);
+                    const taskId = params.task_id || params.taskId;
+                    const adjustmentType = params.adjustment_type || params.adjustmentType || 'postpone';
 
-                    socketRef.current?.sendToolResponse({
-                        type: 'tool_response',
-                        tool_call_id: msg.tool_call_id,
-                        content: result.message
-                    });
+                    console.log(`[AURA TOOL] EXECUTING: task=${taskId}, action=${adjustmentType}`);
+
+                    const result = useAuraStore.getState().manageBurnout(taskId, adjustmentType);
+                    console.log(`[AURA TOOL] RESULT:`, result.message);
+
+                    if (socketRef.current?.sendToolResponseMessage) {
+                        socketRef.current.sendToolResponseMessage({
+                            type: 'tool_response',
+                            toolCallId: toolCallId,
+                            content: result.message
+                        });
+                    } else if (socketRef.current?.sendToolResponse) {
+                        socketRef.current.sendToolResponse({
+                            type: 'tool_response',
+                            tool_call_id: toolCallId,
+                            content: result.message
+                        });
+                    }
                 }
                 break;
 
@@ -211,10 +261,37 @@ export const useHume = () => {
                 break;
 
             default:
-                // console.log('Unhandled message type:', msg.type);
+                console.log('DEBUG: Received message of type:', msg.type, msg);
                 break;
         }
-    }, [setStressScore, setVoiceState, tasks, postponeTask]);
+    }, [setStressScore, setVoiceState]);
+
+    // Update Hume context whenever tasks change
+    useEffect(() => {
+        if (socketRef.current && status === 'ACTIVE') {
+            const taskContext = tasks.map((t: Task) =>
+                `- [${t.id}] ${t.title} (${t.priority} priority, status: ${t.status}, due: ${t.day})`
+            ).join('\n');
+
+            const baseInstructions = `
+You are Aura, an empathic productivity assistant.
+CORE RULES:
+1. Always use the 'manage_burnout' tool when moving, cancelling, or delegating tasks.
+2. Refer to tasks by their IDs (e.g., '1', '2').
+3. Be empathic if the user sounds stressed.
+`;
+
+            const fullPrompt = `${baseInstructions}\n\nUSER TASK LIST:\n${taskContext}\n\nIf the user asks to move a task, you MUST use the manage_burnout tool.`;
+
+            console.group('Aura Context Sync');
+            console.log('Injecting tasks and reinforcing tool rules...');
+
+            socketRef.current.sendSessionSettings({
+                system_prompt: fullPrompt
+            });
+            console.groupEnd();
+        }
+    }, [tasks, status]);
 
     const handleError = useCallback((err: Event | Error) => {
         console.error('Hume socket error:', err);
@@ -332,6 +409,7 @@ export const useHume = () => {
         endSession,
         toggleMic,
         toggleSpeaker,
-        updateSessionSettings
+        updateSessionSettings,
+        emotions
     };
 };

@@ -1,71 +1,83 @@
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useAuraStore, Task } from '@/store/useAuraStore';
 import { Clock, Calendar, AlertCircle, CheckCircle2, Circle } from 'lucide-react';
+import { useEffect } from 'react';
 
 export const TaskGrid = () => {
     const tasks = useAuraStore((state) => state.tasks);
+
+    useEffect(() => {
+        console.log('TaskGrid state update:', tasks);
+        // Expose a global move command for the user to debug animations
+        (window as any).auraMoveTask = (id: string) => {
+            console.log(`Debug: Manually moving task ${id}`);
+            useAuraStore.getState().manageBurnout(id, 'postpone');
+        };
+    }, [tasks]);
 
     const todayTasks = tasks.filter(t => t.day === 'today' && t.status !== 'completed');
     const tomorrowTasks = tasks.filter(t => t.day === 'tomorrow' && t.status !== 'completed');
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 w-full max-w-5xl">
-            {/* Today Section */}
-            <section className="flex flex-col">
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-xl bg-calm/10">
-                            <Clock className="w-5 h-5 text-calm" />
+        <LayoutGroup>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 w-full max-w-5xl">
+                {/* Today Section */}
+                <section className="flex flex-col">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-calm/10">
+                                <Clock className="w-5 h-5 text-calm" />
+                            </div>
+                            <h2 className="text-xl font-bold tracking-tight">Today's Focus</h2>
                         </div>
-                        <h2 className="text-xl font-bold tracking-tight">Today's Focus</h2>
+                        <span className="text-xs font-bold uppercase tracking-widest opacity-30">
+                            {todayTasks.length} {todayTasks.length === 1 ? 'Task' : 'Tasks'}
+                        </span>
                     </div>
-                    <span className="text-xs font-bold uppercase tracking-widest opacity-30">
-                        {todayTasks.length} {todayTasks.length === 1 ? 'Task' : 'Tasks'}
-                    </span>
-                </div>
 
-                <div className="space-y-4">
-                    <AnimatePresence mode="popLayout" initial={false}>
-                        {todayTasks.length > 0 ? (
-                            todayTasks.map((task) => (
-                                <TaskCard key={task.id} task={task} />
-                            ))
-                        ) : (
-                            <EmptyState message="All clear for today. You're doing great!" />
-                        )}
-                    </AnimatePresence>
-                </div>
-            </section>
+                    <motion.div layout className="space-y-4 min-h-[100px]">
+                        <AnimatePresence mode="popLayout" initial={false}>
+                            {todayTasks.length > 0 ? (
+                                todayTasks.map((task) => (
+                                    <TaskCard key={task.id} task={task} />
+                                ))
+                            ) : (
+                                <EmptyState key="today-empty" message="All clear for today. You're doing great!" />
+                            )}
+                        </AnimatePresence>
+                    </motion.div>
+                </section>
 
-            {/* Tomorrow Section */}
-            <section className="flex flex-col">
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3 opacity-60">
-                        <div className="p-2 rounded-xl bg-slate-500/10">
-                            <Calendar className="w-5 h-5" />
+                {/* Tomorrow Section */}
+                <section className="flex flex-col">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3 opacity-60">
+                            <div className="p-2 rounded-xl bg-slate-500/10">
+                                <Calendar className="w-5 h-5" />
+                            </div>
+                            <h2 className="text-xl font-bold tracking-tight">Upcoming</h2>
                         </div>
-                        <h2 className="text-xl font-bold tracking-tight">Upcoming</h2>
+                        <span className="text-xs font-bold uppercase tracking-widest opacity-20">
+                            {tomorrowTasks.length} {tomorrowTasks.length === 1 ? 'Task' : 'Tasks'}
+                        </span>
                     </div>
-                    <span className="text-xs font-bold uppercase tracking-widest opacity-20">
-                        {tomorrowTasks.length} {tomorrowTasks.length === 1 ? 'Task' : 'Tasks'}
-                    </span>
-                </div>
 
-                <div className="space-y-4">
-                    <AnimatePresence mode="popLayout" initial={false}>
-                        {tomorrowTasks.length > 0 ? (
-                            tomorrowTasks.map((task) => (
-                                <TaskCard key={task.id} task={task} />
-                            ))
-                        ) : (
-                            <EmptyState message="No upcoming tasks. Rest up." />
-                        )}
-                    </AnimatePresence>
-                </div>
-            </section>
-        </div>
+                    <motion.div layout className="space-y-4 min-h-[100px]">
+                        <AnimatePresence mode="popLayout" initial={false}>
+                            {tomorrowTasks.length > 0 ? (
+                                tomorrowTasks.map((task) => (
+                                    <TaskCard key={task.id} task={task} />
+                                ))
+                            ) : (
+                                <EmptyState key="tomorrow-empty" message="No upcoming tasks. Rest up." />
+                            )}
+                        </AnimatePresence>
+                    </motion.div>
+                </section>
+            </div>
+        </LayoutGroup>
     );
 };
 
@@ -91,6 +103,7 @@ const TaskCard = ({ task }: { task: Task }) => {
     return (
         <motion.div
             layout
+            layoutId={task.id}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20, scale: 0.95 }}
