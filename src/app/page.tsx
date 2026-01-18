@@ -1,3 +1,5 @@
+'use client';
+
 import { AuraSphere } from '@/components/AuraSphere';
 import { TaskGrid } from '@/components/TaskGrid';
 import { VoiceController } from '@/components/VoiceController';
