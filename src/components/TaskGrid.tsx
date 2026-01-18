@@ -26,17 +26,17 @@ export const TaskGrid = () => {
                     </span>
                 </div>
 
-                <div className="space-y-4">
+                <motion.div layout className="space-y-4 min-h-[100px]">
                     <AnimatePresence mode="popLayout" initial={false}>
                         {todayTasks.length > 0 ? (
                             todayTasks.map((task) => (
                                 <TaskCard key={task.id} task={task} />
                             ))
                         ) : (
-                            <EmptyState message="All clear for today. You're doing great!" />
+                            <EmptyState key="today-empty" message="All clear for today. You're doing great!" />
                         )}
                     </AnimatePresence>
-                </div>
+                </motion.div>
             </section>
 
             {/* Tomorrow Section */}
@@ -53,17 +53,17 @@ export const TaskGrid = () => {
                     </span>
                 </div>
 
-                <div className="space-y-4">
+                <motion.div layout className="space-y-4 min-h-[100px]">
                     <AnimatePresence mode="popLayout" initial={false}>
                         {tomorrowTasks.length > 0 ? (
                             tomorrowTasks.map((task) => (
                                 <TaskCard key={task.id} task={task} />
                             ))
                         ) : (
-                            <EmptyState message="No upcoming tasks. Rest up." />
+                            <EmptyState key="tomorrow-empty" message="No upcoming tasks. Rest up." />
                         )}
                     </AnimatePresence>
-                </div>
+                </motion.div>
             </section>
         </div>
     );
