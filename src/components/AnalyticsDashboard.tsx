@@ -19,7 +19,7 @@ export const AnalyticsDashboard = () => {
     ];
 
     return (
-        <div className="w-full max-w-5xl space-y-8 mt-16">
+        <div className="w-full space-y-6">
             <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                     <div className="p-2 rounded-xl bg-calm/10">
@@ -38,24 +38,24 @@ export const AnalyticsDashboard = () => {
                 )}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Stats Section */}
-                <div className="lg:col-span-1 grid grid-cols-1 gap-4">
+                <div className="lg:col-span-1 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4 h-fit self-start">
                     {stats.map((stat, idx) => (
                         <motion.div
                             key={stat.label}
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: idx * 0.1 }}
-                            className="p-6 rounded-[2rem] glass border border-white/10 flex items-center justify-between"
+                            className="py-4 px-6 rounded-[1.5rem] glass border border-white/10 flex items-center justify-between hover:border-white/20 transition-colors shadow-sm"
                         >
                             <div className="flex items-center gap-4">
-                                <div className={`p-3 rounded-2xl ${stat.color}`}>
+                                <div className={`p-2.5 rounded-xl ${stat.color}`}>
                                     {stat.icon}
                                 </div>
-                                <span className="text-sm font-bold uppercase tracking-widest opacity-40">{stat.label}</span>
+                                <span className="text-xs font-bold uppercase tracking-widest opacity-40">{stat.label}</span>
                             </div>
-                            <span className="text-2xl font-black">{stat.value}</span>
+                            <span className="text-xl font-black tracking-tight">{stat.value}</span>
                         </motion.div>
                     ))}
                 </div>
