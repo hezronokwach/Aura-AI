@@ -20,7 +20,7 @@ export const VoiceController = () => {
     const isConnecting = status === 'CONNECTING';
 
     return (
-        <div className="w-full flex flex-col items-center gap-6 transition-all duration-500">
+        <div className="w-full flex flex-col items-center gap-4 transition-all duration-500">
             <AnimatePresence>
                 {isActive && (
                     <motion.div

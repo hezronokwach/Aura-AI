@@ -16,8 +16,8 @@ export default function Home() {
       <header className="w-full border-b border-white/5 bg-slate-950/50 backdrop-blur-xl z-50">
         <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-xl bg-calm/20 flex items-center justify-center">
-              <div className="h-2 w-2 rounded-full bg-calm shadow-[0_0_10px_var(--calm)]" />
+            <div className="h-10 w-10 rounded-xl overflow-hidden border border-white/10 shadow-lg">
+              <img src="/logo.png" alt="Aura Logo" className="w-full h-full object-cover" />
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight">Aura AI</h1>
@@ -25,7 +25,7 @@ export default function Home() {
             </div>
           </div>
           <div className="flex items-center gap-4 text-xs font-medium opacity-40">
-            <span>v1.0.4</span>
+            <span>v1.0.0</span>
             <div className="w-px h-4 bg-white/10" />
             <span className="uppercase tracking-widest">System Optimal</span>
           </div>
@@ -36,15 +36,14 @@ export default function Home() {
       <div className="flex-1 flex flex-col lg:flex-row max-w-7xl mx-auto w-full px-6 py-6 gap-6">
 
         {/* Left Hub: Sticky Intelligence Sidebar */}
-        <aside className="lg:w-80 flex flex-col gap-6 lg:sticky lg:top-24 lg:h-[calc(100vh-6rem)]">
-          {/* Sphere Visualizer Container */}
-          <div className="flex-1 min-h-[320px] glass rounded-[2.5rem] border border-white/10 flex flex-col items-center justify-center p-6 relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-b from-calm/5 via-transparent to-transparent opacity-50" />
+        <aside className="lg:w-80 flex flex-col gap-4 lg:sticky lg:top-24 lg:h-[calc(100vh-6rem)]">
+          {/* Sphere Visualizer Container - Now more compact and transparent */}
+          <div className="relative flex flex-col items-center justify-center py-4 overflow-hidden group">
             <AuraSphere />
 
-            <div className="absolute bottom-8 left-0 right-0 text-center">
-              <div className="text-[10px] font-black uppercase tracking-[0.3em] opacity-20 group-hover:opacity-40 transition-opacity">
-                Aura Awareness Matrix
+            <div className="absolute bottom-2 left-0 right-0 text-center">
+              <div className="text-[9px] font-black uppercase tracking-[0.3em] opacity-10 group-hover:opacity-30 transition-opacity">
+                Aura Matrix
               </div>
             </div>
           </div>

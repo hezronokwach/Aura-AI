@@ -73,7 +73,7 @@ export const AuraSphere = () => {
     };
 
     return (
-        <div className="relative flex items-center justify-center w-80 h-80">
+        <div className="relative flex items-center justify-center w-64 h-64">
             {/* SVG Filter for Fluidity */}
             <svg style={{ position: 'absolute', width: 0, height: 0 }}>
                 <filter id="fluid">
@@ -99,7 +99,7 @@ export const AuraSphere = () => {
                         repeat: Infinity,
                         ease: "linear",
                     }}
-                    className="absolute w-64 h-64 rounded-full opacity-30"
+                    className="absolute w-56 h-56 rounded-full opacity-30"
                     style={{ background: `linear-gradient(45deg, ${config.baseColor}, ${config.secondaryColor})` }}
                 />
 
@@ -113,12 +113,12 @@ export const AuraSphere = () => {
                         repeat: Infinity,
                         ease: "easeInOut",
                     }}
-                    className="absolute w-48 h-48 rounded-full opacity-40 blur-xl"
+                    className="absolute w-40 h-40 rounded-full opacity-40 blur-xl"
                     style={{ backgroundColor: config.baseColor }}
                 />
 
                 {/* Core Sphere */}
-                <div className="relative w-40 h-40 rounded-full glass border border-white/20 flex items-center justify-center shadow-2xl overflow-hidden">
+                <div className="relative w-32 h-32 rounded-full glass border border-white/20 flex items-center justify-center shadow-2xl overflow-hidden">
                     <motion.div
                         className="absolute inset-0 opacity-20"
                         animate={{
