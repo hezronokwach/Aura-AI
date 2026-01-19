@@ -45,18 +45,18 @@ export const EnhancedAuraSphere = () => {
             transition: { duration: 2, ease: "easeInOut" }
         },
         listening: {
-            scale: config.scale * 1.1,
-            rotate: [0, 5, -5, 0],
+            scale: config.scale * 1.05,  // Reduced: 1.1 -> 1.05
+            rotate: [0, 3, -3, 0],  // Reduced: 5 -> 3 degrees
             transition: {
-                duration: 1.5,
+                duration: 2,  // Slower: 1.5 -> 2 seconds
                 repeat: Infinity,
                 ease: "easeInOut"
             }
         },
         speaking: {
-            scale: [config.scale, config.scale * 1.2, config.scale],
+            scale: [config.scale, config.scale * 1.05, config.scale],  // Reduced: 1.2 -> 1.05
             transition: {
-                duration: 0.5,
+                duration: 1,  // Slower: 0.5 -> 1 second
                 repeat: Infinity,
                 ease: "easeInOut"
             }
