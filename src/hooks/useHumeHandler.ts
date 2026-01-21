@@ -49,57 +49,52 @@ export const useHume = () => {
         };
     }, []);
 
+    /**
+     * Weighted Emotional Index (WEI) - Scientific Stress Calculation
+     * 
+     * Formula: Stress_Total = (Distress × 0.5) + (Anxiety × 0.3) + (Overload × 0.2)
+     * 
+     * Components:
+     * - Distress (50%): Primary burnout indicator (sadness, distress, frustration)
+     * - Anxiety (30%): Secondary stress signal (anxiety, fear, nervousness)
+     * - Overload (20%): Cognitive fatigue multiplier (tiredness, boredom, confusion)
+     * 
+     * See STRESS_METRICS.md for full scientific documentation
+     */
     const calculateStress = (prosody: any) => {
         if (!prosody?.scores) return 0;
 
-        // Weights for different "stressful" emotions
-        const weights: Record<string, number> = {
-            'anxiety': 2.5,
-            'distress': 3.0,
-            'fear': 2.0,
-            'tiredness': 1.2,
-            'anger': 2.5,
-            'frustration': 2.8,
-            'sorrow': 1.0,
-            'disappointment': 1.2,
-            'confusion': 0.8,
-            'disgust': 0.6,
-            'pain': 1.5,
-            'calmness': -1.2,
-            'contentment': -1.0,
-            'relief': -1.8
-        };
+        console.group('🧠 Weighted Emotional Index Calculation');
 
-        let stressSum = 0;
-        let calmSum = 0;
-        console.group('Stress Calculation Analysis');
+        // Component 1: Distress (Primary Burnout Indicator)
+        const distressEmotions = ['distress', 'sadness', 'frustration', 'disappointment'];
+        const distressScore = Math.max(
+            ...distressEmotions.map(e => prosody.scores[e] || prosody.scores[e.charAt(0).toUpperCase() + e.slice(1)] || 0)
+        );
 
-        Object.entries(prosody.scores).forEach(([emotion, score]: [string, any]) => {
-            const eLower = emotion.toLowerCase();
-            const weight = weights[eLower] || 0;
-            if (weight !== 0) {
-                const contribution = score * weight;
-                if (weight > 0) {
-                    stressSum += contribution;
-                } else {
-                    calmSum += contribution;
-                }
+        // Component 2: Anxiety (Secondary Stress Signal)
+        const anxietyEmotions = ['anxiety', 'fear', 'nervousness', 'worry'];
+        const anxietyScore = Math.max(
+            ...anxietyEmotions.map(e => prosody.scores[e] || prosody.scores[e.charAt(0).toUpperCase() + e.slice(1)] || 0)
+        );
 
-                if (Math.abs(contribution) > 0.005) {
-                    console.log(`- ${emotion}: score=${score.toFixed(3)}, weight=${weight}, contrib=${contribution.toFixed(3)}`);
-                }
-            }
-        });
+        // Component 3: Overload (Cognitive Fatigue)
+        const overloadEmotions = ['tiredness', 'boredom', 'confusion'];
+        const overloadScore = Math.max(
+            ...overloadEmotions.map(e => prosody.scores[e] || prosody.scores[e.charAt(0).toUpperCase() + e.slice(1)] || 0)
+        );
 
-        // Intervention: If any stress is detected, damp the calming effect significantly
-        const effectiveCalm = stressSum > 0.05 ? calmSum * 0.2 : calmSum;
-        const rawScore = stressSum + effectiveCalm;
+        // Apply Weighted Emotional Index formula
+        const stressTotal = (distressScore * 0.5) + (anxietyScore * 0.3) + (overloadScore * 0.2);
+        
+        // Normalize to 0-100 scale
+        const finalScore = Math.min(Math.round(stressTotal * 100), 100);
 
-        // Normalize and scale to 0-100
-        const finalScore = Math.max(0, Math.min(100, Math.round(rawScore * 300))); // Boosted sensitivity
-
-        console.log(`Stress Sum: ${stressSum.toFixed(4)}, Calm Sum: ${calmSum.toFixed(4)} (Effective: ${effectiveCalm.toFixed(4)})`);
-        console.log(`Final Scaled Stress Score: ${finalScore}`);
+        console.log(`📊 Component Scores:`);
+        console.log(`   Distress: ${(distressScore * 100).toFixed(1)}% (weight: 0.5)`);
+        console.log(`   Anxiety: ${(anxietyScore * 100).toFixed(1)}% (weight: 0.3)`);
+        console.log(`   Overload: ${(overloadScore * 100).toFixed(1)}% (weight: 0.2)`);
+        console.log(`🎯 Final Stress Score: ${finalScore}/100`);
         console.groupEnd();
 
         return finalScore;
@@ -187,6 +182,16 @@ export const useHume = () => {
                             console.log('Calculated stress score:', score, 'from prosody:', msg.models.prosody);
                             setStressScore(score);
                             setEmotions(msg.models.prosody.scores || {});
+                            
+                            // Store dominant emotion for audit trail
+                            const dominantEmotion = Object.entries(msg.models.prosody.scores || {})
+                                .sort(([, a]: any, [, b]: any) => b - a)[0];
+                            if (dominantEmotion) {
+                                const [emotion, emotionScore] = dominantEmotion;
+                                useAuraStore.getState().setCurrentEmotion(
+                                    `${emotion} (${(emotionScore * 100).toFixed(0)}%)`
+                                );
+                            }
                         }
                     }
                 }
@@ -233,10 +238,8 @@ export const useHume = () => {
                     }
 
                     const taskId = params.task_id || params.taskId;
-                    // Resiliency: AI sometimes hallucination 'new_status' or 'status'
                     let adjustmentType = params.adjustment_type || params.adjustmentType || params.new_status || params.status || 'postpone';
 
-                    // Normalize common AI variations to strict internal actions
                     const isComplete = ['complete', 'completed', 'finished', 'done', 'finish'].includes(adjustmentType.toLowerCase());
                     const isPostpone = ['postpone', 'postponed', 'later', 'move'].includes(adjustmentType.toLowerCase());
                     const isCancel = ['cancel', 'cancelled', 'drop', 'remove'].includes(adjustmentType.toLowerCase());
@@ -245,9 +248,21 @@ export const useHume = () => {
                     else if (isPostpone) adjustmentType = 'postpone';
                     else if (isCancel) adjustmentType = 'cancel';
 
-                    console.warn(`[AURA TOOL] EXECUTING: task=${taskId}, action=${adjustmentType}`);
+                    console.warn(`[AURA TOOL] SETTING PENDING ACTION: task=${taskId}, action=${adjustmentType}`);
 
-                    const result = useAuraStore.getState().manageBurnout(taskId, adjustmentType);
+                    // Get task name for modal
+                    const task = useAuraStore.getState().tasks.find(t => String(t.id) === String(taskId));
+                    const taskName = task?.title || 'Unknown Task';
+
+                    // Set pending action instead of immediate execution
+                    useAuraStore.getState().setPendingAction({
+                        taskId,
+                        taskName,
+                        actionType: adjustmentType as any,
+                        timestamp: Date.now()
+                    });
+
+                    const result = { success: true, message: `Preparing to ${adjustmentType} "${taskName}"...` };
                     console.warn(`[AURA TOOL] RESULT:`, result.message);
 
                     if (socketRef.current?.sendToolResponseMessage) {
