@@ -187,7 +187,7 @@ export const useHume = () => {
                             const dominantEmotion = Object.entries(msg.models.prosody.scores || {})
                                 .sort(([, a]: any, [, b]: any) => b - a)[0];
                             if (dominantEmotion) {
-                                const [emotion, emotionScore] = dominantEmotion;
+                                const [emotion, emotionScore] = dominantEmotion as [string, number];
                                 useAuraStore.getState().setCurrentEmotion(
                                     `${emotion} (${(emotionScore * 100).toFixed(0)}%)`
                                 );
