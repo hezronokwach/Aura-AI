@@ -5,13 +5,18 @@ import { TaskGrid } from '@/components/TaskGrid';
 import { VoiceController } from '@/components/VoiceController';
 import { AnalyticsDashboard } from '@/components/AnalyticsDashboard';
 import { FeedbackToast } from '@/components/FeedbackToast';
+import { ActionLog } from '@/components/ActionLog';
+import { ConfirmActionModal } from '@/components/ConfirmActionModal';
 import { useFirebaseSync } from '@/hooks/useFirebase';
+import { useAuraStore } from '@/store/useAuraStore';
 import { BackgroundGradientAnimation } from '@/components/aceternity/background-gradient-animation';
 import { GridPattern } from '@/components/aceternity/grid-pattern';
 
 export default function Home() {
-  // Sync state with Firebase (if configured)
   useFirebaseSync();
+  const pendingAction = useAuraStore((state) => state.pendingAction);
+  const executePendingAction = useAuraStore((state) => state.executePendingAction);
+  const clearPendingAction = useAuraStore((state) => state.clearPendingAction);
 
   return (
     <>
@@ -42,6 +47,16 @@ export default function Home() {
       <main className="min-h-screen bg-transparent text-slate-50 flex flex-col relative z-0">
         {/* Feedback Toast */}
         <FeedbackToast />
+        
+        {/* Confirmation Modal */}
+        {pendingAction && (
+          <ConfirmActionModal
+            taskName={pendingAction.taskName}
+            actionType={pendingAction.actionType}
+            onConfirm={executePendingAction}
+            onCancel={clearPendingAction}
+          />
+        )}
       {/* Global Header */}
       <header className="w-full border-b border-white/5 bg-slate-950/50 backdrop-blur-xl z-50">
         <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
@@ -80,6 +95,9 @@ export default function Home() {
 
           {/* Voice & Emotion Control Hub */}
           <VoiceController />
+          
+          {/* Action Log */}
+          <ActionLog />
         </aside>
 
         {/* Right Area: Action & Insights */}
