@@ -86,7 +86,7 @@ export const useHume = () => {
 
         // Apply Weighted Emotional Index formula
         const stressTotal = (distressScore * 0.5) + (anxietyScore * 0.3) + (overloadScore * 0.2);
-        
+
         // Normalize to 0-100 scale
         const finalScore = Math.min(Math.round(stressTotal * 100), 100);
 
@@ -176,13 +176,21 @@ export const useHume = () => {
                             timestamp: Date.now()
                         }]);
 
+                        // Pipe to unified chat store
+                        useAuraStore.getState().addChatMessage({
+                            role: 'user',
+                            content: msg.message.content,
+                            timestamp: Date.now(),
+                            source: 'voice',
+                        });
+
                         // Calculate Stress from User Message
                         if (msg.models?.prosody) {
                             const score = calculateStress(msg.models.prosody);
                             console.log('Calculated stress score:', score, 'from prosody:', msg.models.prosody);
                             setStressScore(score);
                             setEmotions(msg.models.prosody.scores || {});
-                            
+
                             // Store dominant emotion for audit trail
                             const dominantEmotion = Object.entries(msg.models.prosody.scores || {})
                                 .sort(([, a]: any, [, b]: any) => b - a)[0];
@@ -205,6 +213,14 @@ export const useHume = () => {
                         timestamp: Date.now()
                     }]);
                     setVoiceState('speaking');
+
+                    // Pipe to unified chat store
+                    useAuraStore.getState().addChatMessage({
+                        role: 'assistant',
+                        content: msg.message.content,
+                        timestamp: Date.now(),
+                        source: 'voice',
+                    });
                 }
                 break;
 
@@ -227,7 +243,62 @@ export const useHume = () => {
 
                 console.warn('!!! HUME TOOL CALL RECEIVED !!!', toolName, toolParams);
 
-                if (toolName === 'manage_burnout' && toolCallId) {
+                if (toolName === 'add_task' && toolCallId) {
+                    // --- ADD TASK Tool ---
+                    let params: any = {};
+                    try {
+                        params = typeof toolParams === 'string'
+                            ? JSON.parse(toolParams)
+                            : toolParams;
+                    } catch (e) {
+                        console.error('Failed to parse add_task parameters', e);
+                    }
+
+                    const title = params.title || params.task_name || 'Untitled Task';
+                    const priority = params.priority || 'medium';
+                    const newId = String(Date.now());
+
+                    useAuraStore.getState().addTask({
+                        id: newId,
+                        title,
+                        priority: (['low', 'medium', 'high'].includes(priority) ? priority : 'medium') as 'low' | 'medium' | 'high',
+                        day: 'today',
+                        status: 'pending'
+                    });
+
+                    useAuraStore.getState().setFeedbackMessage({
+                        text: `Added "${title}" to your tasks`,
+                        type: 'success'
+                    });
+                    setTimeout(() => useAuraStore.getState().setFeedbackMessage(null), 3000);
+
+                    useAuraStore.getState().addActionLog({
+                        timestamp: Date.now(),
+                        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                        triggerEmotion: useAuraStore.getState().currentEmotion,
+                        action: `Added "${title}" (${priority})`,
+                        outcome: 'success',
+                        stressScore: useAuraStore.getState().stressScore
+                    });
+
+                    const addResult = { success: true, message: `Added "${title}" to your tasks with ${priority} priority.` };
+                    console.warn('[AURA TOOL] ADD_TASK:', addResult.message);
+
+                    if (socketRef.current?.sendToolResponseMessage) {
+                        socketRef.current.sendToolResponseMessage({
+                            type: 'tool_response',
+                            toolCallId: toolCallId,
+                            content: addResult.message
+                        });
+                    } else if (socketRef.current?.sendToolResponse) {
+                        socketRef.current.sendToolResponse({
+                            type: 'tool_response',
+                            tool_call_id: toolCallId,
+                            content: addResult.message
+                        });
+                    }
+                } else if (toolName === 'manage_burnout' && toolCallId) {
+                    // --- MANAGE BURNOUT Tool (existing) ---
                     let params: any = {};
                     try {
                         params = typeof toolParams === 'string'
@@ -304,15 +375,29 @@ export const useHume = () => {
             lastSyncedTasksRef.current = taskContext;
 
             const baseInstructions = `
-You are Aura, an empathic productivity assistant.
-CORE RULES:
-1. You MUST use 'manage_burnout' for ANY status change. Never just talk about it—do it!
-2. ACTION MAPPING:
-   - User says "Finished", "Done", "Fixed", or "Checked off" -> Use 'complete'.
-   - User says "Later", "Tomorrow", or "Can't do it now" -> Use 'postpone'.
-3. MANDATORY: The tool 'manage_burnout' is your ONLY way to change tasks. Even if the user sounds happy, use it to mark things as 'complete'.
-4. Celebrate! When a user finishes a task, call the tool first, then tell them how proud you are.
-5. Refer to tasks by their IDs (e.g., "Task 1").
+You are Aura, an empathic productivity assistant with voice and task management.
+
+CORE CAPABILITIES:
+1. TASK MANAGEMENT — Use tools to manage the user's tasks:
+   - 'manage_burnout': Change task status (postpone, complete, cancel, delegate)
+   - 'add_task': Add new tasks when user requests
+2. KNOWLEDGE Q&A — Answer general knowledge questions directly. Be concise and helpful.
+3. SMART ROUTING — Detect user intent automatically:
+   - Task actions (add, complete, postpone, list) → Use appropriate tool
+   - General questions → Answer directly without tools
+   - Emotional support → Combine empathy with practical help
+
+TOOL USAGE RULES:
+- Use 'manage_burnout' for ANY task status change.
+- Use 'add_task' to create new tasks.
+- ACTION MAPPING:
+   - "Finished", "Done", "Fixed", "Checked off" → manage_burnout: 'complete'
+   - "Later", "Tomorrow", "Can't do it now" → manage_burnout: 'postpone'
+   - "Add X to my tasks", "I need to do X" → add_task
+- MANDATORY: Tools are your ONLY way to change tasks.
+- Celebrate completions! Call the tool first, then express pride.
+- Refer to tasks by their IDs (e.g., "Task 1").
+- For general knowledge questions, just respond naturally.
 `;
 
             const fullPrompt = `${baseInstructions}\n\nCURRENT TASKS:\n${taskContext}`;
