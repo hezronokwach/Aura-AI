@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, devtools } from 'zustand/middleware';
-import { ActionLog } from '@/types';
+import { ActionLog, ChatMessage } from '@/types';
 
 export interface Task {
     id: string;
@@ -24,6 +24,7 @@ interface AuraState {
         actionType: 'postpone' | 'cancel' | 'delegate' | 'complete';
         timestamp: number;
     } | null;
+    chatMessages: ChatMessage[];
 
     // Actions
     setStressScore: (score: number) => void;
@@ -40,6 +41,8 @@ interface AuraState {
     setPendingAction: (action: AuraState['pendingAction']) => void;
     clearPendingAction: () => void;
     executePendingAction: () => void;
+    addChatMessage: (msg: Omit<ChatMessage, 'id'>) => void;
+    clearChat: () => void;
 }
 
 export const useAuraStore = create<AuraState>()(
@@ -58,6 +61,7 @@ export const useAuraStore = create<AuraState>()(
                 actionLogs: [],
                 currentEmotion: 'Neutral',
                 pendingAction: null,
+                chatMessages: [],
 
                 setStressScore: (score) => set((state) => ({
                     stressScore: score,
@@ -69,7 +73,7 @@ export const useAuraStore = create<AuraState>()(
                 postponeTask: (id) => set((state) => {
                     console.warn(`[STORE] Postponing Task: ${id}`);
                     const task = state.tasks.find(t => String(t.id) === String(id));
-                    
+
                     // Show feedback message
                     if (task) {
                         setTimeout(() => {
@@ -80,7 +84,7 @@ export const useAuraStore = create<AuraState>()(
                             setTimeout(() => useAuraStore.getState().setFeedbackMessage(null), 3000);
                         }, 100);
                     }
-                    
+
                     return {
                         tasks: state.tasks.map((t) =>
                             String(t.id) === String(id) ? { ...t, day: 'tomorrow' as const, status: 'postponed' as const } : t
@@ -91,7 +95,7 @@ export const useAuraStore = create<AuraState>()(
                 completeTask: (id) => set((state) => {
                     console.warn(`[STORE] Completing Task: ${id}`);
                     const task = state.tasks.find(t => String(t.id) === String(id));
-                    
+
                     // Show feedback message
                     if (task) {
                         setTimeout(() => {
@@ -102,7 +106,7 @@ export const useAuraStore = create<AuraState>()(
                             setTimeout(() => useAuraStore.getState().setFeedbackMessage(null), 3000);
                         }, 100);
                     }
-                    
+
                     return {
                         tasks: state.tasks.map((t) =>
                             String(t.id) === String(id) ? { ...t, status: 'completed' as const } : t
@@ -240,6 +244,15 @@ export const useAuraStore = create<AuraState>()(
                         useAuraStore.getState().clearPendingAction();
                     }
                 },
+
+                addChatMessage: (msg) => set((state) => ({
+                    chatMessages: [
+                        ...state.chatMessages,
+                        { ...msg, id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` }
+                    ].slice(-100) // Keep last 100 messages
+                })),
+
+                clearChat: () => set({ chatMessages: [] }),
             }),
             {
                 name: 'aura-ai-storage', // unique name for localStorage
