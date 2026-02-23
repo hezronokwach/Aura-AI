@@ -47,9 +47,8 @@ export const TaskCard = ({ task }: { task: Task }) => {
             <div className="absolute -inset-[1px] rounded-[1.25rem] bg-gradient-to-r from-calm/20 to-alert/20 opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-300 pointer-events-none" />
 
             {/* PRESERVE: Original card content - EXACT SAME STRUCTURE */}
-            <div className={`relative p-3.5 rounded-[1.25rem] glass flex justify-between items-center border border-white/10 hover:border-white/20 transition-colors shadow-sm cursor-default ${
-                task.status === 'cancelled' ? 'opacity-40 grayscale' : ''
-            }`}>
+            <div className={`relative p-3.5 rounded-[1.25rem] glass flex justify-between items-center border border-white/10 hover:border-white/20 transition-colors shadow-sm cursor-default ${task.status === 'cancelled' ? 'opacity-40 grayscale' : ''
+                }`}>
                 <div className="flex items-center gap-4">
                     <button
                         onClick={(e) => {
@@ -57,23 +56,21 @@ export const TaskCard = ({ task }: { task: Task }) => {
                             postponeTask(task.id);
                         }}
                         disabled={task.day === 'tomorrow'}
-                        className={`p-1 transition-opacity ${
-                            task.day === 'today' 
-                                ? 'opacity-20 hover:opacity-100 hover:scale-110 active:scale-95' 
+                        className={`p-1 transition-opacity ${task.day === 'today'
+                                ? 'opacity-20 hover:opacity-100 hover:scale-110 active:scale-95'
                                 : 'opacity-0 pointer-events-none'
-                        }`}
+                            }`}
                     >
                         <Circle className="w-5 h-5" />
                     </button>
                     <div>
-                        <h3 className={`font-semibold text-base tracking-tight group-hover:text-calm transition-colors leading-tight ${
-                            task.status === 'cancelled' ? 'line-through' : ''
-                        }`}>
+                        <h3 className={`font-semibold text-lg tracking-tight group-hover:text-calm transition-colors leading-tight ${task.status === 'cancelled' ? 'line-through' : ''
+                            }`}>
                             {task.title}
                         </h3>
                         <div className="flex items-center gap-3 mt-1.5">
                             <span className={`w-2 h-2 rounded-full ${priorityColors[task.priority]}`} />
-                            <span className="text-[10px] font-bold uppercase tracking-widest opacity-40">
+                            <span className="text-xs font-bold uppercase tracking-widest opacity-40">
                                 {task.priority} Priority
                             </span>
                         </div>
@@ -84,7 +81,7 @@ export const TaskCard = ({ task }: { task: Task }) => {
                     {config && (
                         <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${config.color}`}>
                             {config.icon}
-                            <span className="text-[9px] font-black uppercase">{config.label}</span>
+                            <span className="text-[11px] font-black uppercase">{config.label}</span>
                         </div>
                     )}
 
