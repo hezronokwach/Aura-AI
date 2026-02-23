@@ -1,6 +1,6 @@
 # Aura AI: The Empathic Productivity Agent
 
-Aura is a next-generation AI personal assistant that doesn't just listen, it *feels*. By combining **Hume AI's Empathic Voice Interface (EVI)** with **Google Gemini-powered text chat**, Aura provides a dual-interface assistant that manages your tasks, answers your questions, and senses when you're overwhelmed.
+Aura is a next-generation AI personal assistant that combines **Hume AI's Empathic Voice Interface (EVI)** with **Google Gemini-powered text chat**. It manages your tasks, answers your questions, and provides a unified voice + text interface.
 
 ![Aura Visualization](https://img.shields.io/badge/Aesthetics-Zen-teal)
 ![Framework](https://img.shields.io/badge/Framework-Next.js%2015-black)
@@ -13,7 +13,7 @@ Aura is a next-generation AI personal assistant that doesn't just listen, it *fe
 
 ```
 User Input
-├── 🎤 Voice → Hume EVI → Prosody Analysis → Tool Calls → Task Actions
+├── 🎤 Voice → Hume EVI → Tool Calls → Task Actions
 └── ⌨️  Text  → Gemini API → Function Calling → Intent Routing → Response
 
                          ↕ Shared State (Zustand) ↕
@@ -34,7 +34,7 @@ User Input
 Both voice and text inputs are automatically routed:
 - **Task requests** ("Add buy groceries") → Function/tool calling → Executes task action
 - **Knowledge questions** ("What is machine learning?") → Direct LLM response
-- **Emotional support** ("I'm overwhelmed") → Stress detection + proactive task management
+- **Emotional support** ("I'm overwhelmed") → Empathic voice response
 
 ---
 
@@ -53,11 +53,11 @@ Ask Aura general knowledge questions through voice or the text chat:
 - *"What's the capital of France?"*
 - Powered by Google Gemini 2.0 Flash for fast, accurate answers.
 
-### 3. Emotional Intelligence (Voice)
-Aura analyzes vocal prosody using Hume AI's 48-emotion model:
-- Calculates a real-time **Stress Score (0-100)**
-- Uses a Weighted Emotional Index: `Stress = (Distress × 0.5) + (Anxiety × 0.3) + (Overload × 0.2)`
-- When stress is high, Aura proactively offers to reschedule low-priority tasks.
+### 3. Voice Interaction
+Aura supports full voice conversations via Hume AI:
+- Start a voice session from the input bar mic button
+- Speak naturally — Aura understands task requests and general questions
+- Voice and text messages appear in the same unified conversation
 
 ### 4. Confirmation Gates
 A 5-second countdown modal appears before AI-triggered actions execute:
@@ -65,11 +65,10 @@ A 5-second countdown modal appears before AI-triggered actions execute:
 - "Undo" button cancels the action
 - Auto-executes after timeout
 
-### 5. Productivity Analytics
-Track focus and flux with:
-- **Stress Trends Chart**: Real-time visualization of emotional state
-- **Task Velocity**: Completed vs. postponed counts
-- **Action Log**: Full audit trail of every AI decision
+### 5. Action Log
+Full audit trail of every AI decision:
+- Tracks what action was taken, when, and the outcome
+- Visible in the sidebar for transparency
 
 ---
 
@@ -125,7 +124,6 @@ npm run dev
 - **Text AI**: Google Gemini 2.0 Flash with Function Calling
 - **State**: Zustand with localStorage persistence
 - **Animations**: Framer Motion (Shared Layout Animations)
-- **Charts**: Recharts for analytics dashboard
 - **Persistence**: Firebase Firestore (optional)
 
 ---
@@ -134,14 +132,13 @@ npm run dev
 
 | File | Purpose |
 |------|---------|
-| `src/hooks/useHumeHandler.ts` | Voice AI integration + stress engine + tool handling |
+| `src/hooks/useHumeHandler.ts` | Voice AI integration + tool handling |
 | `src/app/api/chat/route.ts` | Gemini API endpoint with function calling |
-| `src/components/ChatPanel.tsx` | Floating text chat widget |
-| `src/store/useAuraStore.ts` | Global state management (tasks, chat, stress) |
+| `src/components/UnifiedChat.tsx` | Unified voice + text chat interface |
+| `src/store/useAuraStore.ts` | Global state management (tasks, chat) |
 | `src/components/TaskGrid.tsx` | Task management UI with animations |
 | `src/components/ConfirmActionModal.tsx` | 5-second confirmation gates |
 | `src/components/ActionLog.tsx` | AI decision audit trail |
-| `src/components/EnhancedAuraSphere.tsx` | Animated stress visualization |
 
 ---
 
@@ -157,25 +154,22 @@ npm run dev
 
 ## Testing the Assistant
 
-### Voice (Hume EVI)
-1. Start a voice session via the "Start Session" button.
-2. Say: *"I'm feeling overwhelmed, I can't handle the Lab Report."*
-3. Watch Aura detect stress and trigger the `manage_burnout` tool.
+### Voice
+1. Click the 🎤 mic button in the input bar to start a voice session.
+2. Say: *"Add buy groceries to my tasks"* or *"I finished the Chemistry Lab Report."*
 
-### Text Chat (Gemini)
-1. Click the floating chat bubble (bottom-right corner).
-2. Try these examples:
-   - `"Add buy groceries to my tasks"` → Adds a task
-   - `"What do I still need to do?"` → Lists current tasks
-   - `"Mark task 1 as done"` → Completes the task
-   - `"Explain what machine learning is"` → Knowledge Q&A response
+### Text Chat
+Type in the input bar:
+- `"Add buy groceries to my tasks"` → Adds a task
+- `"What do I still need to do?"` → Lists current tasks
+- `"Mark task 1 as done"` → Completes the task
+- `"Explain what machine learning is"` → Knowledge Q&A response
 
 ---
 
 ## Design Philosophy: Zen
 - **Teal (#14B8A6)**: Calm/Productive state
-- **Amber (#F59E0B)**: Warning/High workload
-- **Rose (#E11D48)**: Stressed/Burnout state
+- **Amber (#F59E0B)**: Warning/Elevated workload
 - **Glassmorphism**: Translucent, layered UI for premium feel
 
 ---
