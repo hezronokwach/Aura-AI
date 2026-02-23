@@ -49,57 +49,52 @@ export const useHume = () => {
         };
     }, []);
 
+    /**
+     * Weighted Emotional Index (WEI) - Scientific Stress Calculation
+     * 
+     * Formula: Stress_Total = (Distress × 0.5) + (Anxiety × 0.3) + (Overload × 0.2)
+     * 
+     * Components:
+     * - Distress (50%): Primary burnout indicator (sadness, distress, frustration)
+     * - Anxiety (30%): Secondary stress signal (anxiety, fear, nervousness)
+     * - Overload (20%): Cognitive fatigue multiplier (tiredness, boredom, confusion)
+     * 
+     * See STRESS_METRICS.md for full scientific documentation
+     */
     const calculateStress = (prosody: any) => {
         if (!prosody?.scores) return 0;
 
-        // Weights for different "stressful" emotions
-        const weights: Record<string, number> = {
-            'anxiety': 2.5,
-            'distress': 3.0,
-            'fear': 2.0,
-            'tiredness': 1.2,
-            'anger': 2.5,
-            'frustration': 2.8,
-            'sorrow': 1.0,
-            'disappointment': 1.2,
-            'confusion': 0.8,
-            'disgust': 0.6,
-            'pain': 1.5,
-            'calmness': -1.2,
-            'contentment': -1.0,
-            'relief': -1.8
-        };
+        console.group('🧠 Weighted Emotional Index Calculation');
 
-        let stressSum = 0;
-        let calmSum = 0;
-        console.group('Stress Calculation Analysis');
+        // Component 1: Distress (Primary Burnout Indicator)
+        const distressEmotions = ['distress', 'sadness', 'frustration', 'disappointment'];
+        const distressScore = Math.max(
+            ...distressEmotions.map(e => prosody.scores[e] || prosody.scores[e.charAt(0).toUpperCase() + e.slice(1)] || 0)
+        );
 
-        Object.entries(prosody.scores).forEach(([emotion, score]: [string, any]) => {
-            const eLower = emotion.toLowerCase();
-            const weight = weights[eLower] || 0;
-            if (weight !== 0) {
-                const contribution = score * weight;
-                if (weight > 0) {
-                    stressSum += contribution;
-                } else {
-                    calmSum += contribution;
-                }
+        // Component 2: Anxiety (Secondary Stress Signal)
+        const anxietyEmotions = ['anxiety', 'fear', 'nervousness', 'worry'];
+        const anxietyScore = Math.max(
+            ...anxietyEmotions.map(e => prosody.scores[e] || prosody.scores[e.charAt(0).toUpperCase() + e.slice(1)] || 0)
+        );
 
-                if (Math.abs(contribution) > 0.005) {
-                    console.log(`- ${emotion}: score=${score.toFixed(3)}, weight=${weight}, contrib=${contribution.toFixed(3)}`);
-                }
-            }
-        });
+        // Component 3: Overload (Cognitive Fatigue)
+        const overloadEmotions = ['tiredness', 'boredom', 'confusion'];
+        const overloadScore = Math.max(
+            ...overloadEmotions.map(e => prosody.scores[e] || prosody.scores[e.charAt(0).toUpperCase() + e.slice(1)] || 0)
+        );
 
-        // Intervention: If any stress is detected, damp the calming effect significantly
-        const effectiveCalm = stressSum > 0.05 ? calmSum * 0.2 : calmSum;
-        const rawScore = stressSum + effectiveCalm;
+        // Apply Weighted Emotional Index formula
+        const stressTotal = (distressScore * 0.5) + (anxietyScore * 0.3) + (overloadScore * 0.2);
 
-        // Normalize and scale to 0-100
-        const finalScore = Math.max(0, Math.min(100, Math.round(rawScore * 300))); // Boosted sensitivity
+        // Normalize to 0-100 scale
+        const finalScore = Math.min(Math.round(stressTotal * 100), 100);
 
-        console.log(`Stress Sum: ${stressSum.toFixed(4)}, Calm Sum: ${calmSum.toFixed(4)} (Effective: ${effectiveCalm.toFixed(4)})`);
-        console.log(`Final Scaled Stress Score: ${finalScore}`);
+        console.log(`📊 Component Scores:`);
+        console.log(`   Distress: ${(distressScore * 100).toFixed(1)}% (weight: 0.5)`);
+        console.log(`   Anxiety: ${(anxietyScore * 100).toFixed(1)}% (weight: 0.3)`);
+        console.log(`   Overload: ${(overloadScore * 100).toFixed(1)}% (weight: 0.2)`);
+        console.log(`🎯 Final Stress Score: ${finalScore}/100`);
         console.groupEnd();
 
         return finalScore;
@@ -181,12 +176,30 @@ export const useHume = () => {
                             timestamp: Date.now()
                         }]);
 
+                        // Pipe to unified chat store
+                        useAuraStore.getState().addChatMessage({
+                            role: 'user',
+                            content: msg.message.content,
+                            timestamp: Date.now(),
+                            source: 'voice',
+                        });
+
                         // Calculate Stress from User Message
                         if (msg.models?.prosody) {
                             const score = calculateStress(msg.models.prosody);
                             console.log('Calculated stress score:', score, 'from prosody:', msg.models.prosody);
                             setStressScore(score);
                             setEmotions(msg.models.prosody.scores || {});
+
+                            // Store dominant emotion for audit trail
+                            const dominantEmotion = Object.entries(msg.models.prosody.scores || {})
+                                .sort(([, a]: any, [, b]: any) => b - a)[0];
+                            if (dominantEmotion) {
+                                const [emotion, emotionScore] = dominantEmotion as [string, number];
+                                useAuraStore.getState().setCurrentEmotion(
+                                    `${emotion} (${(emotionScore * 100).toFixed(0)}%)`
+                                );
+                            }
                         }
                     }
                 }
@@ -200,6 +213,14 @@ export const useHume = () => {
                         timestamp: Date.now()
                     }]);
                     setVoiceState('speaking');
+
+                    // Pipe to unified chat store
+                    useAuraStore.getState().addChatMessage({
+                        role: 'assistant',
+                        content: msg.message.content,
+                        timestamp: Date.now(),
+                        source: 'voice',
+                    });
                 }
                 break;
 
@@ -222,7 +243,62 @@ export const useHume = () => {
 
                 console.warn('!!! HUME TOOL CALL RECEIVED !!!', toolName, toolParams);
 
-                if (toolName === 'manage_burnout' && toolCallId) {
+                if (toolName === 'add_task' && toolCallId) {
+                    // --- ADD TASK Tool ---
+                    let params: any = {};
+                    try {
+                        params = typeof toolParams === 'string'
+                            ? JSON.parse(toolParams)
+                            : toolParams;
+                    } catch (e) {
+                        console.error('Failed to parse add_task parameters', e);
+                    }
+
+                    const title = params.title || params.task_name || 'Untitled Task';
+                    const priority = params.priority || 'medium';
+                    const newId = String(Date.now());
+
+                    useAuraStore.getState().addTask({
+                        id: newId,
+                        title,
+                        priority: (['low', 'medium', 'high'].includes(priority) ? priority : 'medium') as 'low' | 'medium' | 'high',
+                        day: 'today',
+                        status: 'pending'
+                    });
+
+                    useAuraStore.getState().setFeedbackMessage({
+                        text: `Added "${title}" to your tasks`,
+                        type: 'success'
+                    });
+                    setTimeout(() => useAuraStore.getState().setFeedbackMessage(null), 3000);
+
+                    useAuraStore.getState().addActionLog({
+                        timestamp: Date.now(),
+                        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                        triggerEmotion: useAuraStore.getState().currentEmotion,
+                        action: `Added "${title}" (${priority})`,
+                        outcome: 'success',
+                        stressScore: useAuraStore.getState().stressScore
+                    });
+
+                    const addResult = { success: true, message: `Added "${title}" to your tasks with ${priority} priority.` };
+                    console.warn('[AURA TOOL] ADD_TASK:', addResult.message);
+
+                    if (socketRef.current?.sendToolResponseMessage) {
+                        socketRef.current.sendToolResponseMessage({
+                            type: 'tool_response',
+                            toolCallId: toolCallId,
+                            content: addResult.message
+                        });
+                    } else if (socketRef.current?.sendToolResponse) {
+                        socketRef.current.sendToolResponse({
+                            type: 'tool_response',
+                            tool_call_id: toolCallId,
+                            content: addResult.message
+                        });
+                    }
+                } else if (toolName === 'manage_burnout' && toolCallId) {
+                    // --- MANAGE BURNOUT Tool (existing) ---
                     let params: any = {};
                     try {
                         params = typeof toolParams === 'string'
@@ -233,10 +309,8 @@ export const useHume = () => {
                     }
 
                     const taskId = params.task_id || params.taskId;
-                    // Resiliency: AI sometimes hallucination 'new_status' or 'status'
                     let adjustmentType = params.adjustment_type || params.adjustmentType || params.new_status || params.status || 'postpone';
 
-                    // Normalize common AI variations to strict internal actions
                     const isComplete = ['complete', 'completed', 'finished', 'done', 'finish'].includes(adjustmentType.toLowerCase());
                     const isPostpone = ['postpone', 'postponed', 'later', 'move'].includes(adjustmentType.toLowerCase());
                     const isCancel = ['cancel', 'cancelled', 'drop', 'remove'].includes(adjustmentType.toLowerCase());
@@ -245,9 +319,21 @@ export const useHume = () => {
                     else if (isPostpone) adjustmentType = 'postpone';
                     else if (isCancel) adjustmentType = 'cancel';
 
-                    console.warn(`[AURA TOOL] EXECUTING: task=${taskId}, action=${adjustmentType}`);
+                    console.warn(`[AURA TOOL] SETTING PENDING ACTION: task=${taskId}, action=${adjustmentType}`);
 
-                    const result = useAuraStore.getState().manageBurnout(taskId, adjustmentType);
+                    // Get task name for modal
+                    const task = useAuraStore.getState().tasks.find(t => String(t.id) === String(taskId));
+                    const taskName = task?.title || 'Unknown Task';
+
+                    // Set pending action instead of immediate execution
+                    useAuraStore.getState().setPendingAction({
+                        taskId,
+                        taskName,
+                        actionType: adjustmentType as any,
+                        timestamp: Date.now()
+                    });
+
+                    const result = { success: true, message: `Preparing to ${adjustmentType} "${taskName}"...` };
                     console.warn(`[AURA TOOL] RESULT:`, result.message);
 
                     if (socketRef.current?.sendToolResponseMessage) {
@@ -289,15 +375,29 @@ export const useHume = () => {
             lastSyncedTasksRef.current = taskContext;
 
             const baseInstructions = `
-You are Aura, an empathic productivity assistant.
-CORE RULES:
-1. You MUST use 'manage_burnout' for ANY status change. Never just talk about it—do it!
-2. ACTION MAPPING:
-   - User says "Finished", "Done", "Fixed", or "Checked off" -> Use 'complete'.
-   - User says "Later", "Tomorrow", or "Can't do it now" -> Use 'postpone'.
-3. MANDATORY: The tool 'manage_burnout' is your ONLY way to change tasks. Even if the user sounds happy, use it to mark things as 'complete'.
-4. Celebrate! When a user finishes a task, call the tool first, then tell them how proud you are.
-5. Refer to tasks by their IDs (e.g., "Task 1").
+You are Aura, an empathic productivity assistant with voice and task management.
+
+CORE CAPABILITIES:
+1. TASK MANAGEMENT — Use tools to manage the user's tasks:
+   - 'manage_burnout': Change task status (postpone, complete, cancel, delegate)
+   - 'add_task': Add new tasks when user requests
+2. KNOWLEDGE Q&A — Answer general knowledge questions directly. Be concise and helpful.
+3. SMART ROUTING — Detect user intent automatically:
+   - Task actions (add, complete, postpone, list) → Use appropriate tool
+   - General questions → Answer directly without tools
+   - Emotional support → Combine empathy with practical help
+
+TOOL USAGE RULES:
+- Use 'manage_burnout' for ANY task status change.
+- Use 'add_task' to create new tasks.
+- ACTION MAPPING:
+   - "Finished", "Done", "Fixed", "Checked off" → manage_burnout: 'complete'
+   - "Later", "Tomorrow", "Can't do it now" → manage_burnout: 'postpone'
+   - "Add X to my tasks", "I need to do X" → add_task
+- MANDATORY: Tools are your ONLY way to change tasks.
+- Celebrate completions! Call the tool first, then express pride.
+- Refer to tasks by their IDs (e.g., "Task 1").
+- For general knowledge questions, just respond naturally.
 `;
 
             const fullPrompt = `${baseInstructions}\n\nCURRENT TASKS:\n${taskContext}`;

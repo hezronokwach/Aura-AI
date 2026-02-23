@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, devtools } from 'zustand/middleware';
+import { ActionLog, ChatMessage } from '@/types';
 
 export interface Task {
     id: string;
@@ -14,6 +15,16 @@ interface AuraState {
     tasks: Task[];
     voiceState: 'idle' | 'listening' | 'speaking' | 'processing';
     sessionHistory: { time: string; score: number }[];
+    feedbackMessage: { text: string; type: 'success' | 'info' | 'warning' } | null;
+    actionLogs: ActionLog[];
+    currentEmotion: string;
+    pendingAction: {
+        taskId: string;
+        taskName: string;
+        actionType: 'postpone' | 'cancel' | 'delegate' | 'complete';
+        timestamp: number;
+    } | null;
+    chatMessages: ChatMessage[];
 
     // Actions
     setStressScore: (score: number) => void;
@@ -24,6 +35,14 @@ interface AuraState {
     addTask: (task: Task) => void;
     addSessionData: (data: { time: string; score: number }) => void;
     resetSession: () => void;
+    setFeedbackMessage: (message: { text: string; type: 'success' | 'info' | 'warning' } | null) => void;
+    addActionLog: (log: Omit<ActionLog, 'id'>) => void;
+    setCurrentEmotion: (emotion: string) => void;
+    setPendingAction: (action: AuraState['pendingAction']) => void;
+    clearPendingAction: () => void;
+    executePendingAction: () => void;
+    addChatMessage: (msg: Omit<ChatMessage, 'id'>) => void;
+    clearChat: () => void;
 }
 
 export const useAuraStore = create<AuraState>()(
@@ -38,6 +57,11 @@ export const useAuraStore = create<AuraState>()(
                     { id: '3', title: 'English Literature Essay', priority: 'low', day: 'today', status: 'pending' },
                 ],
                 sessionHistory: [],
+                feedbackMessage: null,
+                actionLogs: [],
+                currentEmotion: 'Neutral',
+                pendingAction: null,
+                chatMessages: [],
 
                 setStressScore: (score) => set((state) => ({
                     stressScore: score,
@@ -48,6 +72,19 @@ export const useAuraStore = create<AuraState>()(
 
                 postponeTask: (id) => set((state) => {
                     console.warn(`[STORE] Postponing Task: ${id}`);
+                    const task = state.tasks.find(t => String(t.id) === String(id));
+
+                    // Show feedback message
+                    if (task) {
+                        setTimeout(() => {
+                            useAuraStore.getState().setFeedbackMessage({
+                                text: `"${task.title}" moved to tomorrow`,
+                                type: 'info'
+                            });
+                            setTimeout(() => useAuraStore.getState().setFeedbackMessage(null), 3000);
+                        }, 100);
+                    }
+
                     return {
                         tasks: state.tasks.map((t) =>
                             String(t.id) === String(id) ? { ...t, day: 'tomorrow' as const, status: 'postponed' as const } : t
@@ -57,6 +94,19 @@ export const useAuraStore = create<AuraState>()(
 
                 completeTask: (id) => set((state) => {
                     console.warn(`[STORE] Completing Task: ${id}`);
+                    const task = state.tasks.find(t => String(t.id) === String(id));
+
+                    // Show feedback message
+                    if (task) {
+                        setTimeout(() => {
+                            useAuraStore.getState().setFeedbackMessage({
+                                text: `"${task.title}" completed! Great work!`,
+                                type: 'success'
+                            });
+                            setTimeout(() => useAuraStore.getState().setFeedbackMessage(null), 3000);
+                        }, 100);
+                    }
+
                     return {
                         tasks: state.tasks.map((t) =>
                             String(t.id) === String(id) ? { ...t, status: 'completed' as const } : t
@@ -69,7 +119,6 @@ export const useAuraStore = create<AuraState>()(
                     let success = false;
 
                     set((state) => {
-                        // Resilient ID check (handles string vs number)
                         const taskIndex = state.tasks.findIndex(t => String(t.id) === String(taskId));
 
                         if (taskIndex === -1) {
@@ -83,15 +132,76 @@ export const useAuraStore = create<AuraState>()(
                         if (adjustmentType === 'postpone') {
                             updatedTasks[taskIndex] = { ...task, day: 'tomorrow', status: 'postponed' };
                             message = `Postponed "${task.title}" to tomorrow.`;
+                            setTimeout(() => {
+                                useAuraStore.getState().setFeedbackMessage({
+                                    text: `"${task.title}" moved to tomorrow`,
+                                    type: 'info'
+                                });
+                                setTimeout(() => useAuraStore.getState().setFeedbackMessage(null), 3000);
+                            }, 100);
+                            // Log action
+                            useAuraStore.getState().addActionLog({
+                                timestamp: Date.now(),
+                                time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                                triggerEmotion: state.currentEmotion,
+                                action: `Postponed "${task.title}"`,
+                                outcome: 'success',
+                                stressScore: state.stressScore
+                            });
                         } else if (adjustmentType === 'cancel') {
                             updatedTasks[taskIndex] = { ...task, status: 'cancelled' };
                             message = `Cancelled "${task.title}".`;
+                            setTimeout(() => {
+                                useAuraStore.getState().setFeedbackMessage({
+                                    text: `"${task.title}" cancelled`,
+                                    type: 'warning'
+                                });
+                                setTimeout(() => useAuraStore.getState().setFeedbackMessage(null), 3000);
+                            }, 100);
+                            useAuraStore.getState().addActionLog({
+                                timestamp: Date.now(),
+                                time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                                triggerEmotion: state.currentEmotion,
+                                action: `Cancelled "${task.title}"`,
+                                outcome: 'success',
+                                stressScore: state.stressScore
+                            });
                         } else if (adjustmentType === 'delegate') {
                             updatedTasks[taskIndex] = { ...task, status: 'delegated' };
                             message = `Marked "${task.title}" for delegation.`;
+                            setTimeout(() => {
+                                useAuraStore.getState().setFeedbackMessage({
+                                    text: `"${task.title}" delegated`,
+                                    type: 'info'
+                                });
+                                setTimeout(() => useAuraStore.getState().setFeedbackMessage(null), 3000);
+                            }, 100);
+                            useAuraStore.getState().addActionLog({
+                                timestamp: Date.now(),
+                                time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                                triggerEmotion: state.currentEmotion,
+                                action: `Delegated "${task.title}"`,
+                                outcome: 'success',
+                                stressScore: state.stressScore
+                            });
                         } else if (adjustmentType === 'complete') {
                             updatedTasks[taskIndex] = { ...task, status: 'completed' };
                             message = `Awesome! I've marked "${task.title}" as completed.`;
+                            setTimeout(() => {
+                                useAuraStore.getState().setFeedbackMessage({
+                                    text: `"${task.title}" completed! Great work!`,
+                                    type: 'success'
+                                });
+                                setTimeout(() => useAuraStore.getState().setFeedbackMessage(null), 3000);
+                            }, 100);
+                            useAuraStore.getState().addActionLog({
+                                timestamp: Date.now(),
+                                time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                                triggerEmotion: state.currentEmotion,
+                                action: `Completed "${task.title}"`,
+                                outcome: 'success',
+                                stressScore: state.stressScore
+                            });
                         }
 
                         success = true;
@@ -111,6 +221,38 @@ export const useAuraStore = create<AuraState>()(
                 })),
 
                 resetSession: () => set({ stressScore: 0, sessionHistory: [] }),
+
+                setFeedbackMessage: (message) => set({ feedbackMessage: message }),
+
+                addActionLog: (log) => set((state) => ({
+                    actionLogs: [
+                        { ...log, id: Date.now().toString() },
+                        ...state.actionLogs
+                    ].slice(0, 50)
+                })),
+
+                setCurrentEmotion: (emotion) => set({ currentEmotion: emotion }),
+
+                setPendingAction: (action) => set({ pendingAction: action }),
+
+                clearPendingAction: () => set({ pendingAction: null }),
+
+                executePendingAction: () => {
+                    const { pendingAction } = useAuraStore.getState();
+                    if (pendingAction) {
+                        useAuraStore.getState().manageBurnout(pendingAction.taskId, pendingAction.actionType);
+                        useAuraStore.getState().clearPendingAction();
+                    }
+                },
+
+                addChatMessage: (msg) => set((state) => ({
+                    chatMessages: [
+                        ...state.chatMessages,
+                        { ...msg, id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` }
+                    ].slice(-100) // Keep last 100 messages
+                })),
+
+                clearChat: () => set({ chatMessages: [] }),
             }),
             {
                 name: 'aura-ai-storage', // unique name for localStorage
