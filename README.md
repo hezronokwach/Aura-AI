@@ -13,8 +13,8 @@ Aura is a next-generation AI personal assistant that combines **Hume AI's Empath
 
 ```
 User Input
-├── 🎤 Voice → Hume EVI → Tool Calls → Task Actions
-└── ⌨️  Text  → Gemini API → Function Calling → Intent Routing → Response
+├──  Voice → Hume EVI → Tool Calls → Task Actions
+└──  Text  → Gemini API → Function Calling → Intent Routing → Response
 
                          ↕ Shared State (Zustand) ↕
 
@@ -173,4 +173,4 @@ Type in the input bar:
 - **Glassmorphism**: Translucent, layered UI for premium feel
 
 ---
-Developed by the Aura-AI Team.
+
